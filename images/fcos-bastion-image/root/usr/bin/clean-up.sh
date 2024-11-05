@@ -32,6 +32,7 @@ do
     echo "<3>$cluster to continue being preserved, skipping..." && continue
     [ "${enddate}" -le "${nowdate}" ] && \
     echo "<3>$cluster no longer to be preserved"
+      rm -f "$cluster_folder/preserve"
   fi
   echo "<3>$cluster is more than 24 hours old and not preserved, starting the pruning...."
   prune_nodes "$cluster"
