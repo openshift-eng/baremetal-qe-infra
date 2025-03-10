@@ -4,3 +4,8 @@ COPY root/ /
 
 RUN set -x; pip3 install --target=/usr/lib redfish pandas netaddr wheel junos-eznc \
     && systemctl preset-all
+
+ARG PACKAGES_INSTALL="python3-csvkit python3-jinja2 python3-jinja2-cli yq"
+
+RUN dnf install -y ${PACKAGES_INSTALL} \
+    && dnf clean all
