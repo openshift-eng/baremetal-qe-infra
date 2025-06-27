@@ -142,5 +142,3 @@ touch "${BUILD_DIR}/vips.yaml"
 if [ "$REQUEST_VIPS" == "true" ]; then
   yq -p json -o yaml "${BUILD_DIR}/vips.json" > "${BUILD_DIR}/vips.yaml"
 fi
-
-yq < "${BUILD_DIR}/hosts.yaml"
