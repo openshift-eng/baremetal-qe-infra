@@ -11,7 +11,7 @@ EnvironmentFile=/run/net_env
 Restart=on-failure
 TimeoutStopSec=70
 ExecStartPre=/usr/bin/podman rm -f --ignore tang
-ExecStart=/usr/bin/podman run -p 7500:7500 --name tang \
+ExecStart=/usr/bin/podman run -p 7500:7500 -p [::]:7500:7500 --name tang \
     -v /var/opt/tang/:/var/db/tang:Z \
     --health-cmd="curl -s -o /dev/null http://localhost:7500 && \
          curl -s -o /dev/null http://${baremetal_IPADDR}:7500 && \
