@@ -37,6 +37,9 @@ storage:
     blobdescriptor: inmemory
   filesystem:
     rootdirectory: /var/lib/registry
+  maintenance:
+    readonly:
+      enabled: false
 auth:
   htpasswd:
     realm: Registry Realm
