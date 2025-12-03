@@ -18,7 +18,8 @@ RUN set -x; PACKAGES_INSTALL="bridge-utils conntrack-tools curl fping iftop iput
                               krb5-workstation qemu-kvm qemu-user-static libvirt virt-manager virt-install crypto-policies-scripts \
                               sudo screen telnet unzip util-linux-user ignition lshw tcpdump socat python3-pip man pciutils  \
                               skopeo jq vim neovim inotify-tools firewall-config openvswitch NetworkManager-ovs tree sshpass"; \
-    rpm-ostree install $PACKAGES_INSTALL \
+    rpm-ostree override remove git-core \
+    && rpm-ostree install $PACKAGES_INSTALL \
     && ln -sf /usr/sbin/ovs-vswitchd.dpdk /usr/sbin/ovs-vswitchd \
     && rm -rf /var/* \
     && rpm-ostree cleanup -m \
