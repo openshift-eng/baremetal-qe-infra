@@ -9,4 +9,4 @@ EXPOSE 7500/tcp
 
 COPY root/ /
 
-CMD /bin/socat "TCP6-LISTEN:7500,reuseaddr,fork" "system:'REMOTE_ADDR=\$SOCAT_PEERADDR /usr/libexec/tangd /var/db/tang'"
+CMD /bin/socat -d -d "TCP6-LISTEN:7500,reuseaddr,fork" "system:'REMOTE_ADDR=\$SOCAT_PEERADDR /usr/libexec/tangd /var/db/tang' 2>&1"
