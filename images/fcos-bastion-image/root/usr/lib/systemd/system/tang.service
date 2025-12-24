@@ -16,8 +16,9 @@ ExecStart=/usr/bin/podman run -p 7500:7500 -p [::]:7500:7500 --name tang \
     --health-cmd="curl -s -o /dev/null http://localhost:7500 && \
          curl -s -o /dev/null http://${baremetal_IPADDR}:7500 && \
          curl -s -o /dev/null http://${ext0_IPADDR}:7500" \
-    --health-interval=10s \
+    --health-interval=30s \
     --health-retries=3 \
+    --health-start-period=500s \
     --health-on-failure=kill \
     registry.ci.openshift.org/ci/bmqe-tang:latest
 ExecStop=/usr/bin/podman stop --ignore tang
