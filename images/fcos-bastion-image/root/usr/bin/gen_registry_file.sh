@@ -2,6 +2,11 @@
 set -euxo pipefail
 
 PORT="$1"
+[ -f "/var/.registry-$PORT" ] && {
+  echo "The initialization script for registry-$PORT did already run. Please
+  add any updates to config.yaml manually. Exiting"
+  exit 0
+}
 registry_password_file="/opt/registry-${PORT}/auth/htpasswd"
 registry_certs_cert="/opt/registry-${PORT}/certs/domain.crt"
 registry_certs_key="/opt/registry-${PORT}/certs/domain.key"
@@ -46,12 +51,6 @@ health:
     interval: 10s
     threshold: 3
 EOF
-
-[ -f "/var/.registry-$PORT" ] && {
-  echo "Config update, if any, has been applied. Other steps for registry-$PORT
-  were executed in the past. Exiting"
-  exit 0
-}
 
 ## REGISTRY PASSWORD
 if [ ! -f "${reg_passwd_file}" ]; then
