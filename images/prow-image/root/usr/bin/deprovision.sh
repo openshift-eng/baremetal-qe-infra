@@ -38,8 +38,8 @@ git remote | grep -q origin || git remote add origin https://github.com/openshif
 git config core.sparseCheckout true
 echo "ci-operator/step-registry/baremetal/lab/post" > .git/info/sparse-checkout
 echo "ci-operator/step-registry/baremetal/lab/ipi" >> .git/info/sparse-checkout
-git fetch --depth 1 origin master
-git reset --hard origin/master
+git fetch --depth 1 origin main
+git reset --hard origin/main
 pushd ci-operator/step-registry/baremetal/lab/post || exit 1
 
 echo "Running the post-installation steps..."
