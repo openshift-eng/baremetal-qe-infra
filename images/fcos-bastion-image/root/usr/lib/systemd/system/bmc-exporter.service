@@ -1,0 +1,32 @@
+[Unit]
+Description=Creates the prometheus bmc exporter container
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=%t/containers
+
+Wants=bmc-exporter-init.service
+After=bmc-exporter-init.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=/usr/share/bastion_services/bmc_exporter/bmc_exporter_systemd.conf
+EnvironmentFile=/run/net_env
+ExecStartPre=/usr/bin/podman rm -f --ignore bmc-exporter
+ExecStart=/usr/bin/podman run \
+    --name bmc-exporter -p ${PODMAN_BMC_EXPORTER_PORT}:${PODMAN_BMC_EXPORTER_PORT}/tcp \
+    -v "${PODMAN_BMC_EXPORTER_BASEDIR}/config.yml:/etc/prometheus/idrac.yml:Z" \
+    --health-cmd="curl -s -o /dev/null http://localhost:${PODMAN_BMC_EXPORTER_PORT} && \
+         curl -s -o /dev/null http://${baremetal_IPADDR}:${PODMAN_BMC_EXPORTER_PORT} && \
+         curl -s -o /dev/null http://${ext0_IPADDR}:${PODMAN_BMC_EXPORTER_PORT}" \
+    --health-interval=10s \
+    --health-retries=3 \
+    --health-on-failure=kill \
+    ${PODMAN_BMC_EXPORTER_IMAGE}
+ExecStop=/usr/bin/podman stop --ignore bmc-exporter
+ExecStopPost=/usr/bin/podman rm -f --ignore bmc-exporter
+Restart=always
+RestartSec=5
+Type=simple
+
+[Install]
+WantedBy=default.target
