@@ -69,7 +69,17 @@ function check_available_hosts() {
   echo "Acquiring lock $LOCK_FD ($LOCK) (waiting up to 10 minutes)"
   flock -w 600 "$LOCK_FD"
   echo "Lock acquired $LOCK_FD ($LOCK)"
-  mapfile -t CANDIDATES_HOSTS < <(grep -v -f <(cut -f1,2,3 -d, "$RESERVED_FILE") <(sed -e '/^#/d' -e '/^mac.*$/d' "$INVENTORY_FILE") | grep -E ",${ARCH},.*$VENDOR_REGEX")
+
+  # Build grep pattern: filter by arch, and optionally by vendor
+  if [ -n "$VENDOR_REGEX" ]; then
+    # Both arch and vendor specified
+    FILTER_PATTERN=",${ARCH},.*${VENDOR_REGEX}"
+  else
+    # Only arch specified
+    FILTER_PATTERN=",${ARCH},"
+  fi
+  mapfile -t CANDIDATES_HOSTS < <(grep -v -f <(cut -f1,2,3 -d, "$RESERVED_FILE") <(sed -e '/^#/d' -e '/^mac.*$/d' "$INVENTORY_FILE") | grep -E "$FILTER_PATTERN")
+  
   COUNT=${#CANDIDATES_HOSTS[@]}
   if [ "$COUNT" -lt "$NUM_HOSTS" ]; then
     echo "Unable to reserve the required amount of hosts witch ARCH: $ARCH and Vendor: ${VENDOR:-Any} (retry n. $retry_count), releasing lock..."
