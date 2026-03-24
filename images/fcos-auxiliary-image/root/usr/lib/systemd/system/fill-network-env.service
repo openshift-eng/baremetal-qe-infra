@@ -1,0 +1,14 @@
+[Unit]
+Description=Fill /run/net_env with environment variables having information about the network
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c "/usr/bin/print-net-env.sh > /run/net_env"
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
