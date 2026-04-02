@@ -40,7 +40,7 @@ echo "Extracting ignition file from the OVE ISO..."
 coreos-installer iso ignition show "$OVE_ISO_PATH" > "$EXTRACTED_IGN"
 
 echo "Adding sshAuthorizedKeys in the ignition file..."
-jq -r -c --arg public_key "$(cat "$SSH_PUBLIC_KEY")" '.passwd.users=[{"name":"core","sshAuthorizedKeys":$public_key}]' "$EXTRACTED_IGN" > "$EXTRACTED_IGN.tmp" && mv "$EXTRACTED_IGN.tmp" "$EXTRACTED_IGN"
+jq -r -c --arg public_key "$SSH_PUBLIC_KEY" '.passwd.users=[{"name":"core","sshAuthorizedKeys":$public_key}]' "$EXTRACTED_IGN" > "$EXTRACTED_IGN.tmp" && mv "$EXTRACTED_IGN.tmp" "$EXTRACTED_IGN"
 
 echo "Replacing agent interactive service in the ignition file..."
 jq -r -c --arg agent_service "$(cat $AGENT_SERVICE_FILE)" '(.systemd.units[] | select(.name == "agent-interactive-console.service") | .contents) = $agent_service' "$EXTRACTED_IGN" | tr -d "\n" > "$UPDATED_IGN"
