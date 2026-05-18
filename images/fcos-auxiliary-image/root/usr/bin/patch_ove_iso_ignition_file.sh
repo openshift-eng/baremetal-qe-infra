@@ -47,4 +47,19 @@ jq -r -c --arg agent_service "$(cat $AGENT_SERVICE_FILE)" '(.systemd.units[] | s
 
 coreos-installer iso ignition embed -i "$UPDATED_IGN" -f "$OVE_ISO_PATH"
 
+echo "Extracting grub config..."
+xorriso -osirrox on \
+   -indev "$OVE_ISO_PATH" \
+   -extract /EFI/redhat/grub.cfg \
+    /tmp/"${OVE_ISO_NAME%.*}".cfg
+
+echo "Adding serial console..."
+sed -i 's/\bmetal\b/& console=ttyS0/g' /tmp/"${OVE_ISO_NAME%.*}".cfg
+
+xorriso -indev "$OVE_ISO_PATH" \
+  -outdev "$OVE_ISO_PATH" \
+  -boot_image any keep \
+  -map /tmp/"${OVE_ISO_NAME%.*}".cfg /EFI/redhat/grub.cfg \
+  -commit
+
 echo "Done!"
