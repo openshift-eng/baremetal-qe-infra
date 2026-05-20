@@ -1,0 +1,12 @@
+module virtproxyd-complete 1.0;
+
+require {
+    type virtproxyd_t;
+    type sshd_session_t;
+    class dir search;
+    class file { open read };
+}
+
+#============= virtproxyd_t ==============
+allow virtproxyd_t sshd_session_t:dir search;
+allow virtproxyd_t sshd_session_t:file { open read };

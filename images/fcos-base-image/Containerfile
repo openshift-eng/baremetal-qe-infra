@@ -23,6 +23,15 @@ RUN set -x; PACKAGES_INSTALL="bridge-utils conntrack-tools curl fping iftop iput
 
 COPY root/ /
 
+# After image update from fcos 43 to 44 we need custom selinux polices for
+# libvirt to avoid avc denials
+RUN set -x; cd /usr/share/selinux/local \
+    && checkmodule -M -m -o virtproxyd-complete.mod virtproxyd-complete.te \
+    && semodule_package -o virtproxyd-complete.pp -m virtproxyd-complete.mod \
+    && semodule -i virtproxyd-complete.pp \
+    && rm -f virtproxyd-complete.mod \
+    && ostree container commit
+
 RUN set -x; systemctl preset-all \
     && rpm-ostree ex rebuild \
     && rpm-ostree cleanup -m \
