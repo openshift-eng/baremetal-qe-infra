@@ -9,8 +9,9 @@ Environment=PODMAN_SYSTEMD_UNIT=%n
 EnvironmentFile=/usr/share/bastion_services/nginx/nginx_systemd.conf
 EnvironmentFile=/run/net_env
 ExecStartPre=/usr/bin/podman rm -f --ignore nginx
+ExecStartPre=/bin/bash -c '/usr/bin/mkdir -p "${PODMAN_NGINX_BASEDIR}"'
 # TODO: remove the creation of the healthz file once the container image is updated to handle this endpoint
-ExecStartPre=/bin/touch ${PODMAN_NGINX_BASEDIR}/healthz
+ExecStartPre=/bin/bash -c '/usr/bin/touch "${PODMAN_NGINX_BASEDIR}/healthz"'
 ExecStart=/usr/bin/podman run --name nginx -p 80:80/tcp -p 443:443/tcp \
     --health-cmd="curl -f -s http://${ext0_IPADDR}/healthz && \
         curl -f -s http://${mgmt0_IPADDR}/healthz && \

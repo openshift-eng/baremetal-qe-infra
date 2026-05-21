@@ -39,7 +39,7 @@ function download_and_verify() {
 }
 
 TFTP_DIR=${TFTP_DIR:-/var/opt/dnsmasq/tftpboot}
-HTTP_DIR=${HTTP_DIR:-/var/opt/html}
+HTTP_DIR=${HTTP_DIR:-/var/mnt/data-storage/html}
 mkdir -p "${TFTP_DIR}"/fcos-{aarch64,x86_64}
 mkdir -p "${HTTP_DIR}"/fcos-{aarch64,x86_64}
 

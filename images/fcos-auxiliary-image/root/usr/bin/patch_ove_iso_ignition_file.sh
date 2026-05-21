@@ -9,10 +9,11 @@ SSH_PUBLIC_KEY="${2}"
 
 AGENT_SERVICE_URL="https://raw.githubusercontent.com/openshift/installer/refs/heads/main/data/data/agent/systemd/units/agent-interactive-console.service"
 TEMP_FILE="/tmp/agent-interactive-console.service"
-AGENT_SERVICE_FILE="/opt/html/agent-interactive-console.service"
+DATA_STORAGE="/var/mnt/data-storage"
+AGENT_SERVICE_FILE="$DATA_STORAGE/html/agent-interactive-console.service"
 EXTRACTED_IGN="/tmp/extracted_${OVE_ISO_NAME%.*}.ign"
 UPDATED_IGN="/tmp/updated_${OVE_ISO_NAME%.*}.ign"
-OVE_ISO_PATH="/opt/html/$OVE_ISO_NAME"
+OVE_ISO_PATH="$DATA_STORAGE/html/$OVE_ISO_NAME"
 
 echo "Downloading agent interactive service to a temporary location..."
 curl -sSL "$AGENT_SERVICE_URL" -o "$TEMP_FILE" || { echo "Download failed"; exit 1; }

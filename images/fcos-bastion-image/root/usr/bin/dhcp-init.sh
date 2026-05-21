@@ -3,7 +3,7 @@
 set -x
 
 mkdir -p "${PODMAN_DNSMASQ_BASEDIR}"/{etc,tftpboot,misc,hosts/hostsdir,hosts/optsdir} \
- /var/opt/{ignitions,html}
+ /var/opt/ignitions "${DATA_STORAGE}"/html
 ign=/var/opt/ignitions
 cp "${LOCAL_PATH}"/dhcp/dnsmasq.conf "${PODMAN_DNSMASQ_BASEDIR}"/etc/
 if [ -f "${PODMAN_DNSMASQ_BASEDIR}"/dnsmasq.hosts.conf ]; then
@@ -11,7 +11,7 @@ if [ -f "${PODMAN_DNSMASQ_BASEDIR}"/dnsmasq.hosts.conf ]; then
 fi
 
 cp "${LOCAL_PATH}"/dhcp/tftpboot/grub.cfg "${TFTP_DIR}"
-cp "${LOCAL_PATH}"/ignitions/* ${ign}
+cp "${LOCAL_PATH}"/ignitions/* "${ign}"
 
 if [ ! -s "${ign}"/authorized_keys ] || [ ! -s "${ign}"/password_hashes ]; then
   echo "<3>Some files are not yet available, exiting prematurely from initializing dhcp services"
@@ -22,11 +22,11 @@ fi
 password_hash=$(<"${ign}/password_hashes")
 export password_hash
 
-pdm_opts=(--rm --interactive --security-opt "label=disable" -v "${ign}":/ign -v /var/opt/html:/output -w /ign)
+pdm_opts=(--rm --interactive --security-opt "label=disable" -v "${ign}":/ign -v "$DATA_STORAGE"/html:/output -w /ign)
 butane_img="quay.io/coreos/butane:release"
 
 podman run "${pdm_opts[@]}" ${butane_img} --pretty --strict --files-dir=./ wipe_disks.bu -o /output/wipe_disks.ign
-podman run "${pdm_opts[@]}" ${butane_img} --pretty --strict --files-dir=./ -o /output/shell.ign  <<< "$(envsubst < ${ign}/shell.bu)"
+podman run "${pdm_opts[@]}" ${butane_img} --pretty --strict --files-dir=./ -o /output/shell.ign  <<< "$(envsubst < "${ign}"/shell.bu)"
 
 # Extract grubaa64.efi and grubx64.efi from centso:stream9 RPMs
 podman run -i --rm --privileged --name grubefi -v "${TFTP_DIR}":/tmp/output quay.io/centos/centos:stream9 /bin/bash <<'EOF'

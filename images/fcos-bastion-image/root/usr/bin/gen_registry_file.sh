@@ -7,19 +7,22 @@ PORT="$1"
   add any updates to config.yaml manually. Exiting"
   exit 0
 }
-registry_password_file="/opt/registry-${PORT}/auth/htpasswd"
-registry_certs_cert="/opt/registry-${PORT}/certs/domain.crt"
-registry_certs_key="/opt/registry-${PORT}/certs/domain.key"
-reg_cert_file="/opt/registry-common/domain.crt"
-reg_key_file="/opt/registry-common/domain.key"
-reg_passwd_file="/opt/registry-common/htpasswd"
 
-mkdir -p "/opt/registry-${PORT}/"
+REGISTRY_DIR="/var/mnt/data-storage"
+mkdir -p "${REGISTRY_DIR}/registry-${PORT}/"
+
+registry_password_file="${REGISTRY_DIR}/registry-${PORT}/auth/htpasswd"
+registry_certs_cert="${REGISTRY_DIR}/registry-${PORT}/certs/domain.crt"
+registry_certs_key="${REGISTRY_DIR}/registry-${PORT}/certs/domain.key"
+reg_cert_file="${REGISTRY_DIR}/registry-common/domain.crt"
+reg_key_file="${REGISTRY_DIR}/registry-common/domain.key"
+reg_passwd_file="${REGISTRY_DIR}/registry-common/htpasswd"
+
 # Ensure the file exists (it needs to be filled by ignition)
-touch "/opt/registry-${PORT}/env"
+touch "${REGISTRY_DIR}/registry-${PORT}/env"
 
 ## GENERATE REGISTRY CONFIGY.YAML FILE
-cat > "/opt/registry-${PORT}/config.yaml" << EOF
+cat > "${REGISTRY_DIR}/registry-${PORT}/config.yaml" << EOF
 version: 0.1
 log:
   fields:
@@ -62,7 +65,7 @@ if [ ! -f "${reg_cert_file}" ] || [ ! -f "${reg_key_file}" ]; then
   echo "Some certificate files are not ready yet. Exiting"
   exit 1
 fi
-mkdir -p "/opt/registry-${PORT}/"{data,auth,certs}
+mkdir -p "${REGISTRY_DIR}/registry-${PORT}/"{data,auth,certs}
 cat "${reg_passwd_file}"> "${registry_password_file}"
 cat "${reg_cert_file}" > "${registry_certs_cert}"
 cat "${reg_key_file}"> "${registry_certs_key}"
