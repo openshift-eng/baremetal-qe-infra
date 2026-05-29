@@ -60,7 +60,7 @@ done
 mkdir -p "${HTTP_DIR}"/ipxe
 find "${HTTP_DIR}/ipxe" -type f -mtime +60 -exec rm {} \;
 curl -f -o "${HTTP_DIR}/ipxe/ipxe.x86_64.usb" "https://boot.ipxe.org/ipxe.usb"
-curl -f -o "${HTTP_DIR}/ipxe/ipxe.aarch64.usb" "https://boot.ipxe.org/arm64-efi/ipxe.usb"
+curl -f -o "${HTTP_DIR}/ipxe/ipxe.aarch64.usb" "https://boot.ipxe.org/arm64-efi/ipxe.efi"
 
 # At the end of the process, restore SELinux contexts and restart the podman-based services to allow the container_t context to
 # be set on the newly downloaded files
