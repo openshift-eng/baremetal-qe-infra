@@ -1,7 +1,7 @@
 [Unit]
 Description=Creates a nginx container service
-Wants=network-online.target
-After=network-online.target
+Wants=network-online.target fill-network-env.service
+After=network-online.target fill-network-env.service
 RequiresMountsFor=%t/containers
 
 [Service]

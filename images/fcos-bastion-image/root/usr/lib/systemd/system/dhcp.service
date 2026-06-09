@@ -1,10 +1,9 @@
 [Unit]
 Description=Creates a dnsmasq container for dhcp and tftpboot service
 RequiresMountsFor=%t/containers
-Wants=network-online.target
-After=network-online.target
-Wants=dhcp-init.service
-After=dhcp-init.service
+BindsTo=firewalld.service
+Wants=network-online.target dhcp-init.service
+After=network-online.target firewalld.service dhcp-init.service
 
 [Service]
 Environment=PODMAN_SYSTEMD_UNIT=%n

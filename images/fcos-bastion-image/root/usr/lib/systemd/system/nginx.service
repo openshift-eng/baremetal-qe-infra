@@ -1,7 +1,8 @@
 [Unit]
 Description=Creates a nginx container service
-Wants=network-online.target
-After=network-online.target
+BindsTo=firewalld.service
+Wants=network-online.target fill-network-env.service
+After=network-online.target fill-network-env.service firewalld.service
 RequiresMountsFor=%t/containers
 
 [Service]

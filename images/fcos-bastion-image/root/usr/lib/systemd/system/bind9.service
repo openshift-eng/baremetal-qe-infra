@@ -1,7 +1,8 @@
 [Unit]
 Description=Creates the bind9 name server service
+BindsTo=firewalld.service
 Wants=network-online.target
-After=network-online.target
+After=network-online.target firewalld.service
 RequiresMountsFor=%t/containers
 AssertPathExists=/opt/bind9
 AssertPathExists=/opt/bind9_zones

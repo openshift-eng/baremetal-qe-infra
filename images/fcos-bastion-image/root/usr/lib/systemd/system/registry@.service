@@ -1,7 +1,8 @@
 [Unit]
 Description=Create a podman registry container
+BindsTo=firewalld.service
 Wants=network-online.target
-After=network-online.target
+After=network-online.target firewalld.service
 RequiresMountsFor=%t/containers
 ConditionPathExists=/var/mnt/data-storage/registry-common
 
