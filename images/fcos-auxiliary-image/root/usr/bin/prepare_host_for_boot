@@ -1,0 +1,245 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# --- Initialize Defaults ---
+host=""
+redfish_user=""
+redfish_password=""
+vendor=""
+sol="false"
+boot_mode=""
+iso_url=""
+
+function show_usage() {
+    echo "Usage: ${0} [REQUIRED FLAGS] [OPTIONAL FLAGS]"
+    echo ""
+    echo "REQUIRED FLAGS:"
+    echo "  -h, --host <ip/fqdn>       BMC IP address or host name"
+    echo "  -u, --user <username>      Redfish/iDRAC/iLO username"
+    echo "  -p, --password <password>  Redfish/iDRAC/iLO password"
+    echo "  -v, --vendor <dell|hpe>    Server hardware vendor"
+    echo ""
+    echo "OPTIONAL FLAGS:"
+    echo "  -s, --sol <true|false>     Enable Serial over LAN console configuration (Default: ${sol})"
+    echo "  -m, --bootmode <http|vcd>  Override target boot medium selection (Default: ${boot_mode})"
+    echo "  -i, --iso <url>            The installation target ISO HTTP URL path (Required if bootmode is http)"
+    echo "  --help                     Display this help menu and exit"
+    echo ""
+}
+
+while [[ $# -gt 0 ]]; do
+    case "${1}" in
+        --help)                show_usage; exit 0 ;;
+        -h|--host)             host="${2}"; shift 2 ;;
+        -u|--user)             redfish_user="${2}"; shift 2 ;;
+        -p|--password)         redfish_password="${2}"; shift 2 ;;
+        -v|--vendor)           vendor="${2}"; shift 2 ;;
+        -s|--sol)              sol="${2}"; shift 2 ;;
+        -m|--bootmode)         boot_mode="${2}"; shift 2 ;;
+        -i|--iso)              iso_url="${2}"; shift 2 ;;
+        *) echo "Unknown option: ${1}. Use --help for usage details."; exit 1 ;;
+    esac
+done
+
+# Validation
+if [[ -z "${host}" || -z "${redfish_user}" || -z "${redfish_password}" || -z "${vendor}" ]]; then
+    echo "Error: Missing mandatory parameters."
+    show_usage
+    exit 1
+fi
+
+# Validation Fix: If sol is false and bootmode is http, THEN iso is mandatory.
+if [[ "${sol}" != "true" && "${boot_mode}" == "http" && -z "${iso_url}" ]]; then
+    echo "Error: '--iso <url>' parameter must be specified when deploying via 'http' bootmode."
+    show_usage
+    exit 1
+fi
+
+function log() {
+    echo "[#${host}] $(date -u +"%Y-%m-%dT%H:%M:%SZ"): ${*}"
+}
+
+function ipmi_cmd() {
+    ipmitool -I lanplus -H "${host}" -U "${redfish_user}" -P "${redfish_password}" "${@}" 2>&1 | sed "s/^/$(log 'IPMI: ')/"
+}
+
+function wait_for_dell_jobs() {
+    log "Checking for completed iDRAC configuration jobs..."
+    start_time=$(date +%s)
+    timeout=900 # 15 minutes in seconds
+
+    while true; do
+        current_time=$(date +%s)
+        if (( current_time - start_time >= timeout )); then
+            log "Error: iDRAC jobs did not reach 'Completed' status within 15 minutes."
+            exit 1
+        fi
+
+        job_container=$(curl -k -s -u "${redfish_user}:${redfish_password}" "https://${host}/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/Jobs")
+        job_uris=$(echo "${job_container}" | jq -r '.Members[]."@odata.id" | select(contains("JID_"))' 2>/dev/null)
+
+        latest_job_uri=$(echo "${job_uris}" | sort -V | tail -n1)
+
+        if [[ -n "${latest_job_uri}" && "${latest_job_uri}" != "null" ]]; then
+            job_detail=$(curl -k -s -u "${redfish_user}:${redfish_password}" "https://${host}${latest_job_uri}")
+            job_state=$(echo "${job_detail}" | jq -r '.JobState' 2>/dev/null || echo "Unknown")
+
+            log "Evaluating Latest Target Job [$(basename "${latest_job_uri}")] state: ${job_state}"
+
+            if [ "${job_state}" = "Completed" ]; then
+                log "The latest JID_ task has reached a terminal completed state."
+                break
+            fi
+        fi
+
+        log "The latest JID_ task is still running. Re-checking in 30 seconds..."
+        sleep 30
+    done
+}
+
+function power_off_host() {
+    log "Powering off the host..."
+    for i in {1..16}; do
+        if [ "${i}" -eq 16 ]; then
+            log "Exiting: Host failed to power off after 15 retries."
+            exit 1
+        fi
+
+        if ! ipmi_cmd power status | grep -i -q "Chassis Power is off"; then
+            log "Attempt ${i}: Host is powered on. Forcing power off..."
+            ipmi_cmd power off || true
+            sleep 30
+        else
+            log "Attempt ${i}: Host is successfully powered off."
+            break
+        fi
+    done
+}
+
+function power_on_host() {
+    log "Powering on the host..."
+    until ipmi_cmd power status | grep -i -q "Chassis Power is on"; do
+        log "The host is still off... Sending power on command."
+        ipmi_cmd power on || true
+        sleep 30
+    done
+}
+
+# --- Vendor Management Logic ---
+function configure_dell() {
+    boot_selection="VCD-DVD"
+
+    if [ "${sol}" = "true" ]; then
+        log "Fetching Dell BIOS attributes and model..."
+        bios_attributes=$(curl -k -s -u "${redfish_user}:${redfish_password}" "https://${host}/redfish/v1/Systems/System.Embedded.1/Bios" | jq '.Attributes')
+        model=$(curl -k -s -u "${redfish_user}:${redfish_password}" "https://${host}/redfish/v1/Systems/System.Embedded.1" | jq -r '.Model')
+        bios_changed=false
+
+        case "${model}" in
+            "PowerEdge R740")
+                if [[ $(echo "$bios_attributes" | jq -r '.SerialPortAddress') != "Serial1Com2Serial2Com1" ]] || [[ $(echo "$bios_attributes" | jq -r '.ExtSerialConnector') != "Serial2" ]]; then
+                    log "Applying serial console settings to ${host}"
+                    curl -k -s -u "${redfish_user}:${redfish_password}" \
+                    -H "Content-Type: application/json" \
+                    -X PATCH "https://${host}/redfish/v1/Systems/System.Embedded.1/Bios/Settings" \
+                    --data '{"Attributes":{"SerialPortAddress": "Serial1Com2Serial2Com1", "ExtSerialConnector": "Serial2"}}'
+                    bios_changed=true
+                else
+                  log "Serial console settings are already correctly set for ${host}."
+                fi
+                ;;
+            "PowerEdge R650")
+                if [[ $(echo "$bios_attributes" | jq -r '.SerialPortAddress') != "Com1" ]]; then
+                    log "Applying serial console settings to ${host}"
+                    curl -k -s -u "${redfish_user}:${redfish_password}" \
+                    -H "Content-Type: application/json" \
+                    -X PATCH "https://${host}/redfish/v1/Systems/System.Embedded.1/Bios/Settings" \
+                    --data '{"Attributes":{"SerialPortAddress": "Com1"}}'
+                    bios_changed=true
+                else
+                  log "Serial console settings are already correctly set for ${host}."
+                fi
+                ;;
+            *)
+                log "Unsupported Dell model: ${model}"
+                exit 1
+                ;;
+        esac
+
+        if [ "$bios_changed" = true ]; then
+            log "Creating iDRAC BIOS Configuration Job for ${host}..."
+            curl -k -s -u "${redfish_user}:${redfish_password}" -X POST \
+                "https://${host}/redfish/v1/Managers/iDRAC.Embedded.1/Jobs" \
+                -H "Content-Type: application/json" \
+                -d '{"TargetSettingsURI":"/redfish/v1/Systems/System.Embedded.1/Bios/Settings", "RebootJobType":"Immediate"}'
+
+            log "Forcing a hardware reset to apply the pending BIOS job..."
+            curl -k -s -u "${redfish_user}:${redfish_password}" -X POST \
+                "https://${host}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset" \
+                -H "Content-Type: application/json" \
+                -d '{"ResetType": "On"}'
+        fi
+    else
+        wait_for_dell_jobs
+
+        log "Configuring Dell BootOnce device to ${boot_selection}..."
+        curl -k -s -u "${redfish_user}:${redfish_password}" -X POST \
+            "https://${host}/redfish/v1/Managers/iDRAC.Embedded.1/Actions/Oem/EID_674_Manager.ImportSystemConfiguration" \
+            -H "Content-Type: application/json" \
+            -d '{"ShareParameters":{"Target":"ALL"},"ImportBuffer":
+                      "<SystemConfiguration><Component FQDD=\"iDRAC.Embedded.1\">
+                      <Attribute Name=\"ServerBoot.1#BootOnce\">Enabled</Attribute>
+                      <Attribute Name=\"ServerBoot.1#FirstBootDevice\">'"$boot_selection"'</Attribute>
+                      </Component></SystemConfiguration>"}'
+        power_on_host
+    fi
+}
+
+function configure_hpe() {
+    if [ "${sol}" = "true" ]; then
+        log "Enabling HPE Serial console..."
+        curl -k -s -u "${redfish_user}:${redfish_password}" -X PATCH "https://${host}/redfish/v1/Systems/1/Bios/Settings/" \
+            -H 'Content-Type: application/json' \
+            -d '{"Attributes":{"RedirectionAfterPOST":"Enabled"}}'
+    else
+        boot_selection="UefiHttp"
+        if [ "${boot_mode}" = "vcd" ]; then
+            boot_selection="Cd"
+        fi
+
+        log "Configuring URL path in UrlBootFile for HPE..."
+        curl -k -s -u "${redfish_user}:${redfish_password}" -X PATCH \
+            "https://${host}/redfish/v1/Systems/1/Bios/Settings/" \
+            -H "Content-Type: application/json" \
+            -d "{\"Attributes\": {\"PreBootNetwork\": \"Auto\", \"UrlBootFile\": \"${iso_url}\"}}"
+
+        log "Applying one-time boot override parameter: ${boot_selection}"
+        curl -k -s -u "${redfish_user}:${redfish_password}" -X PATCH \
+            "https://${host}/redfish/v1/Systems/1/" \
+            -H 'Content-Type: application/json' \
+            -d "{\"Boot\": {\"BootSourceOverrideTarget\": \"${boot_selection}\", \"BootSourceOverrideEnabled\": \"Once\"}}"
+
+        log "Powering on HPE host via Redfish API..."
+        curl -k -s -u "${redfish_user}:${redfish_password}" -X POST \
+            "https://${host}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset/" \
+            -H "Content-Type: application/json" \
+            -d '{"ResetType": "On"}'
+    fi
+}
+
+# --- Main Script Execution ---
+power_off_host
+
+case "${vendor,,}" in
+    dell)
+        configure_dell
+        ;;
+    hpe)
+        configure_hpe
+        ;;
+    *)
+        log "Error: Unknown vendor ${vendor}"
+        exit 1
+        ;;
+esac
