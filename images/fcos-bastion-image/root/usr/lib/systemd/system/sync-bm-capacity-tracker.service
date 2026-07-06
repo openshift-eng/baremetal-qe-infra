@@ -1,0 +1,17 @@
+[Unit]
+Description=Sync Baremetal Capacity Tracker Google Sheets
+Requires=var-mnt-data\x2dstorage.mount
+After=network.target var-mnt-data\x2dstorage.mount
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/usr/share/sync-bm-capacity-tracker
+Environment="GOOGLE_APPLICATION_CREDENTIALS=/var/mnt/data-storage/sync-bm-capacity-tracker/secrets/sa.json"
+ExecStartPre=/usr/bin/mkdir -p /var/mnt/data-storage/sync-bm-capacity-tracker/uploaded-packages
+ExecStart=/usr/bin/python3 server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

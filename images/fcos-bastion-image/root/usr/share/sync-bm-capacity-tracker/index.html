@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Baremetal Capacity Tracker Utility</title>
+    <style>
+        body { font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 50px; text-align: center; margin: 0; }
+        .card { max-width: 450px; margin: 50px auto; background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        h3 { margin-top: 0; font-size: 22px; color: #38bdf8; }
+        label { display: block; text-align: left; margin: 14px 0 6px 0; font-size: 14px; font-weight: 500; }
+        select, input, button { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        select, input { background: #0f172a; color: #fff; border: 1px solid #334155; outline: none; }
+        select:focus, input:focus { border-color: #38bdf8; }
+        button { background: #38bdf8; color: #0f172a; border: none; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+        button:hover { background: #0ea5e9; }
+        button:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+        #status { margin-top: 20px; font-weight: 600; line-height: 1.5; font-size: 14px; white-space: pre-line; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3>Sync Google Sheets (BM Capacity Tracker)</h3>
+    <form id="syncForm">
+        <label for="arch">Select Architecture</label>
+        <select id="arch">
+            <option value="amd64">amd64 (x86_64)</option>
+            <option value="arm64">arm64 (Aarch64)</option>
+        </select>
+
+        <label for="username">Your Name / Team</label>
+        <input type="text" id="username" placeholder="e.g. John Doe / ABI Team" required>
+
+        <label for="zipFile">Upload TSV (.zip)</label>
+        <input type="file" id="zipFile" accept=".zip" required>
+
+        <button type="submit" id="btn">Run Sync Script</button>
+    </form>
+    <div id="status"></div>
+</div>
+
+<script>
+    document.getElementById('syncForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('status');
+        const btn = document.getElementById('btn');
+
+        status.style.color = '#94a3b8';
+        status.innerText = '⌛ Connecting to backend service and running sync passes...';
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('arch', document.getElementById('arch').value);
+        formData.append('username', document.getElementById('username').value);
+        formData.append('tsv_zip', document.getElementById('zipFile').files[0]);
+
+        try {
+            const response = await fetch('/sync-bm-tracker/api/sync-bm-capacity-tracker', { method: 'POST', body: formData });
+            const result = await response.json();
+
+            if (response.ok && result.status === 'success') {
+                status.style.color = '#4ade80';
+                status.innerText = '✅ ' + result.message;
+            } else {
+                throw new Error(result.message || 'The synchronization backend failed to process execution.');
+            }
+        } catch (err) {
+            status.style.color = '#f87171';
+            status.innerText = '❌ Error: ' + err.message;
+        } finally {
+            btn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
