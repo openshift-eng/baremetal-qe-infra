@@ -5,7 +5,7 @@ Wants=network-online.target
 After=network-online.target firewalld.service
 RequiresMountsFor=%t/containers
 
-Wants=squid-proxy-init.service
+Requires=squid-proxy-init.service
 After=squid-proxy-init.service
 
 [Service]
