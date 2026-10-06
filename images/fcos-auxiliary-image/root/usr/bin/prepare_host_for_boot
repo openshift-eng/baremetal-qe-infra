@@ -172,7 +172,7 @@ function configure_dell() {
             curl -k -s -u "${redfish_user}:${redfish_password}" -X POST \
                 "https://${host}/redfish/v1/Managers/iDRAC.Embedded.1/Jobs" \
                 -H "Content-Type: application/json" \
-                -d '{"TargetSettingsURI":"/redfish/v1/Systems/System.Embedded.1/Bios/Settings", "RebootJobType":"Immediate"}'
+                -d '{"TargetSettingsURI":"/redfish/v1/Systems/System.Embedded.1/Bios/Settings", "StartTime":"TIME_NOW"}'
 
             log "Forcing a hardware reset to apply the pending BIOS job..."
             curl -k -s -u "${redfish_user}:${redfish_password}" -X POST \
