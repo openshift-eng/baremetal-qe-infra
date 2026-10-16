@@ -135,6 +135,7 @@ function configure_dell() {
         bios_attributes=$(curl -k -s -u "${redfish_user}:${redfish_password}" "https://${host}/redfish/v1/Systems/System.Embedded.1/Bios" | jq '.Attributes')
         model=$(curl -k -s -u "${redfish_user}:${redfish_password}" "https://${host}/redfish/v1/Systems/System.Embedded.1" | jq -r '.Model')
         bios_changed=false
+        power_off_host
 
         case "${model}" in
             "PowerEdge R740")
@@ -182,6 +183,7 @@ function configure_dell() {
         fi
     else
         wait_for_dell_jobs
+        power_off_host
 
         log "Configuring Dell BootOnce device to ${boot_selection}..."
         curl -k -s -u "${redfish_user}:${redfish_password}" -X POST \
@@ -197,6 +199,7 @@ function configure_dell() {
 }
 
 function configure_hpe() {
+    power_off_host
     if [ "${sol}" = "true" ]; then
         log "Enabling HPE Serial console..."
         curl -k -s -u "${redfish_user}:${redfish_password}" -X PATCH "https://${host}/redfish/v1/Systems/1/Bios/Settings/" \
@@ -229,8 +232,6 @@ function configure_hpe() {
 }
 
 # --- Main Script Execution ---
-power_off_host
-
 case "${vendor,,}" in
     dell)
         configure_dell
