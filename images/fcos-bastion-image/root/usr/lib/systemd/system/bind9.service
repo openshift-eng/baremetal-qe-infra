@@ -14,11 +14,10 @@ Environment=PODMAN_SYSTEMD_UNIT=%n
 ExecStartPre=/usr/bin/podman rm -f --ignore bind9
 ExecStartPre=/bin/bash -c '[ -f /opt/bind9/rndc.key ] || /usr/bin/podman run --rm \
     -v /opt/bind9:/tmp/bind9:Z -u root --entrypoint=/bin/bash \
-    registry.ci.openshift.org/ci/bmqe-bind9:latest \
+    quay-proxy.ci.openshift.org/openshift/ci:ci_bmqe-bind9_latest \
     -c "rndc-confgen -a -c /tmp/bind9/rndc.key && chown named:named /tmp/bind9/rndc.key && chmod 600 /tmp/bind9/rndc.key"'
 ExecStart=/usr/bin/podman run \
-            -p 53:53/udp -p 53:53/tcp \
-            -p [::]:53:53/udp -p [::]:53:53/tcp \
+            --network=host \
             --name bind9 -v /opt/bind9_zones:/var/lib/bind:Z \
             -v /opt/bind9/named.conf.local:/etc/bind/named.conf.local:Z \
             -v /opt/bind9/rndc.key:/etc/rndc.key:Z \
@@ -27,7 +26,7 @@ ExecStart=/usr/bin/podman run \
             --health-interval=30s \
             --health-retries=4 \
             --health-on-failure=kill \
-            registry.ci.openshift.org/ci/bmqe-bind9:latest
+            quay-proxy.ci.openshift.org/openshift/ci:ci_bmqe-bind9_latest
 ExecStop=/usr/bin/podman stop --ignore bind9
 ExecStopPost=/usr/bin/podman rm -f --ignore bind9
 Restart=always
