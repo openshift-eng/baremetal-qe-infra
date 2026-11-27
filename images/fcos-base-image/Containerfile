@@ -3,10 +3,10 @@ FROM quay.io/fedora/fedora-coreos:stable
 ENTRYPOINT ["/bin/bash"]
 
 RUN set -x; arch=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); cat /etc/os-release \
-    && rpm-ostree install \
+    && dnf install -y \
         https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
         #https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
-    && ostree container commit
+    && dnf clean all
 
 RUN set -x; PACKAGES_INSTALL="bridge-utils conntrack-tools curl fping iftop iputils iproute mtr nethogs socat chrony iperf \
                               iperf3 iputils mtr ethtool tftp wget ipmitool gawk targetcli net-tools bind-utils htop ncdu \
@@ -14,12 +14,11 @@ RUN set -x; PACKAGES_INSTALL="bridge-utils conntrack-tools curl fping iftop iput
                               krb5-workstation qemu-kvm qemu-user-static libvirt virt-manager virt-install crypto-policies-scripts \
                               sudo screen telnet unzip util-linux-user ignition lshw tcpdump socat python3-pip man pciutils  \
                               skopeo jq vim neovim inotify-tools firewall-config openvswitch NetworkManager-ovs tree sshpass"; \
-    rpm-ostree override remove git-core \
-    && rpm-ostree install $PACKAGES_INSTALL \
+    dnf remove -y git-core \
+    && dnf install -y $PACKAGES_INSTALL \
     && ln -sf /usr/sbin/ovs-vswitchd.dpdk /usr/sbin/ovs-vswitchd \
     && rm -rf /var/* \
-    && rpm-ostree cleanup -m \
-    && ostree container commit
+    && dnf clean all
 
 COPY root/ /
 
@@ -29,12 +28,9 @@ RUN set -x; cd /usr/share/selinux/local \
     && checkmodule -M -m -o virtproxyd-complete.mod virtproxyd-complete.te \
     && semodule_package -o virtproxyd-complete.pp -m virtproxyd-complete.mod \
     && semodule -i virtproxyd-complete.pp \
-    && rm -f virtproxyd-complete.mod \
-    && ostree container commit
+    && rm -f virtproxyd-complete.mod
 
 RUN set -x; systemctl preset-all \
-    && rpm-ostree ex rebuild \
-    && rpm-ostree cleanup -m \
     && ln -sf /usr/bin/podman /usr/bin/docker \
     && echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.d/99-sysctl.conf \
     && echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.d/99-sysctl.conf \
@@ -60,10 +56,8 @@ RUN HOME=/tmp RUNZSH=no CHSH=no ZSH=/usr/lib/ohmyzsh \
     && echo 'PATH=~/bin:~/.bin:~/.opt/bin:$PATH' >> /etc/zshenv \
     && sed -i 's|^SHELL=.*|SHELL=/usr/bin/zsh|' /etc/default/useradd \
     # ${VARIANT_ID^} is not posix compliant and is not parsed correctly by zsh \
-    && sed -i 's/VARIANT_ID^/VARIANT_ID/' /etc/profile.d/toolbox.sh \
-    && ostree container commit
+    && sed -i 's/VARIANT_ID^/VARIANT_ID/' /etc/profile.d/toolbox.sh
 
 ARG TOOLBOX_IMAGE=quay.io/openshifttest/fedora:bm-auto-toolbox
 RUN set -x; update-crypto-policies --set legacy --no-reload \
-    && echo "image = \"${TOOLBOX_IMAGE}\"" >> /etc/containers/toolbox.conf \
-    && ostree container commit
+    && echo "image = \"${TOOLBOX_IMAGE}\"" >> /etc/containers/toolbox.conf
