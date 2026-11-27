@@ -11,7 +11,7 @@ APPEND=${APPEND:-false}
 ARCH=${ARCH:-aarch64}
 N_MASTERS=${N_MASTERS:-3}
 N_WORKERS=${N_WORKERS:-3}
-MAX_WAIT_MINS=${MAX_WAIT_MINS:-30}
+MAX_WAIT_MINS=${MAX_WAIT_MINS:-180}
 RESERVED_FILE=${RESERVED_FILE:-/etc/hosts_pool_reserved}
 INVENTORY_FILE=${INVENTORY_FILE:-/etc/hosts_pool_inventory}
 VENDOR_REGEX=""
@@ -116,12 +116,12 @@ printf '%s\n' "${OUTPUT[@]}" >> "$RESERVED_FILE"
 if [ "$REQUEST_VIPS" == "true" ]; then
     FIRST_HOST_ID=$(echo "${CANDIDATES_HOSTS[0]}" | cut -f3 -d,)
     FIRST_HOST_ID_HEX=$(printf '%03x' "$FIRST_HOST_ID")
-    
+
     INGRESS_VIP="${INGRESS_VIPS_SUBNET_PREFIX:-192.168.82.}${FIRST_HOST_ID}"
     API_VIP="${API_VIPS_SUBNET_PREFIX:-192.168.81.}${FIRST_HOST_ID}"
     INGRESS_VIP_V6="${IPV6_INGRESS_VIPS_SUBNET_PREFIX:-fd99:2222:3456::2:}${FIRST_HOST_ID_HEX}"
     API_VIP_V6="${IPV6_API_VIPS_SUBNET_PREFIX:-fd99:2222:3456::1:}${FIRST_HOST_ID_HEX}"
-    
+
     # Create a single JSON object
     echo "{
   \"ingress_vip\": \"$INGRESS_VIP\",
